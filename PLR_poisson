@@ -1,5 +1,5 @@
 ##poisson regression
-```{r,eval=FALSE}
+#```{r,eval=FALSE}
 library(glmnet)
 library(MASS)
 library(parallel)
@@ -88,4 +88,4 @@ print(c("experiment number:",l))
 # 
 # ##
 # print(result)
-```
+#```
