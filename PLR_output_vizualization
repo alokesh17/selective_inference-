@@ -1,0 +1,59 @@
+```{r,eval=FALSE}
+write.csv(result_grand_nb,file="/Users/alokesh.manna17gmail.com/Travelers/output_plr_comparison/result_grand_nb.csv")
+write.csv(diff_grand_nb,file="/Users/alokesh.manna17gmail.com/Travelers/output_plr_comparison/diff_grand_nb.csv")
+
+
+```
+
+
+
+```{r}
+diff_grand_nb=read.csv("/Users/alokesh.manna17gmail.com/Travelers/output_plr_comparison/diff_grand_nb.csv")
+diff_grand_pois=read.csv("/Users/alokesh.manna17gmail.com/Travelers/output_plr_comparison/diff_grand_pois.csv")
+result_grand_nb=read.csv("/Users/alokesh.manna17gmail.com/Travelers/output_plr_comparison/result_grand_nb.csv")
+result_grand_pois=read.csv("/Users/alokesh.manna17gmail.com/Travelers/output_plr_comparison/result_grand_pois.csv")
+
+```
+coverage rates for poisson
+```{r}
+result_grand_pois[,-1]|>rowMeans()
+```
+coverage rates for nb
+```{r}
+result_grand_nb[,-1]|>rowMeans()
+```
+```{r}
+nb=result_grand_nb[,-1]|>rowMeans()|>c()
+pois=result_grand_pois[,-1]|>rowMeans()|>c()
+nb[12:41]|>mean()
+pois[12:41]|>mean()
+```
+
+```{r}
+nb[1:12]|>mean()
+pois[1:12]|>mean()
+```
+
+boxplot for the CI difference for nb
+
+```{r}
+boxplot.matrix(diff_grand_nb[2:41,-1]|>as.matrix(),use.cols = FALSE,col="blue")
+```
+boxplot for the CI difference for poisson
+```{r}
+boxplot.matrix(diff_grand_pois[2:41,-1]|>as.matrix(),use.cols = FALSE,col="red")
+
+```
+
+```{r}
+df=data.frame(true_beta=c(.5,c(1:10)/15))|>
+cbind(NB_CI_rate=result_grand_nb[1:11,-1]|>rowMeans())|>
+cbind(Pois_CI_rate=result_grand_pois[1:11,-1]|>rowMeans())
+
+```
+
+```{r}
+library(xtable)
+
+xtable(df,caption="Confidence rate result comparizon for nonzero coefficients")
+```
