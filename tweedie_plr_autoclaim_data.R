@@ -2,38 +2,72 @@ library(glmnet)
 ## LOAD AUTO CLAIM DATA
 data(AutoClaim, package = "cplm")
 
+# ## REMOVE FEATURES
+# x <- AutoClaim[, -c(1:5, 10, 16, 29)]
+# 
+# ## INTEGER CODING TABLE FOR CATEGORICAL FEATURES
+# coding <- sapply(x, function(x) {
+#   if(is.factor(x))
+#     data.frame(
+#       code = seq_along(levels(x)),
+#       level = levels(x)
+#     )
+# })
+# coding[sapply(coding, is.null)] <- NULL
+# print(coding)
+# 
+# ## ENCODE CATEGORICAL FEATURES INTO INTEGERS
+# index <- sapply(x, is.factor)
+# x[index] <- lapply(x[index], as.integer)
+# 
+# dt <- list(data = as.matrix(x), label = AutoClaim$CLM_AMT5 / 1000)
+# 
+# X=as.matrix(x)
+# Y=AutoClaim$CLM_AMT5 / 1000
+# n=length(Y)
+# p=dim(X)[2]
+# 
+# impute_median <- function(x) {
+#   x[is.na(x)] <- median(x, na.rm = TRUE)
+#   return(x)
+#}
+
 ## REMOVE FEATURES
 x <- AutoClaim[, -c(1:5, 10, 16, 29)]
 
-## INTEGER CODING TABLE FOR CATEGORICAL FEATURES
-coding <- sapply(x, function(x) {
-  if(is.factor(x))
-    data.frame(
-      code = seq_along(levels(x)),
-      level = levels(x)
-    )
-})
-coding[sapply(coding, is.null)] <- NULL
-print(coding)
-
-## ENCODE CATEGORICAL FEATURES INTO INTEGERS
-index <- sapply(x, is.factor)
-x[index] <- lapply(x[index], as.integer)
-
-dt <- list(data = as.matrix(x), label = AutoClaim$CLM_AMT5 / 1000)
-
-X=as.matrix(x)
-Y=AutoClaim$CLM_AMT5 / 1000
-n=length(Y)
-p=dim(X)[2]
-
-impute_median <- function(x) {
-  x[is.na(x)] <- median(x, na.rm = TRUE)
-  return(x)
-}
-
+str(x)
 # Apply the function to each column of the matrix
 X_imputed <- apply(X, 2, impute_median)
+
+X_imputed <- apply(x, 2, impute_median)
+
+library(dplyr)
+library(tidyr)
+x <- x %>% 
+  mutate(across(where(is.numeric), ~replace_na(., median(., na.rm = TRUE))))
+
+
+X_imputed <- x
+
+#X_imputed <- as.matrix(X_imputed)
+
+str(X_imputed); str(x)
+
+install.packages("fastDummies")
+library(fastDummies)
+
+
+
+X_imputed <- fastDummies::dummy_cols(x, remove_first_dummy = TRUE, remove_selected_columns = TRUE)
+
+sum(is.na(X_imputed))  # Total count of NA values
+
+X_imputed <- data.frame(lapply(X_imputed, function(x) {
+  if (is.factor(x)) as.numeric(as.factor(x)) else x
+}))
+
+X_imputed <- as.matrix(X_imputed)
+mode(X_imputed) <- "numeric"  # Ensure all values are numeric
 
 
 fit_1 <- cv.glmnet(X_imputed, Y, family = statmod::tweedie, alpha = 1)
@@ -47,6 +81,9 @@ coef(fit_2)
 
 
 simulations=100
+ Y=AutoClaim$CLM_AMT5 / 1000
+ n=length(Y)
+p=dim(X_imputed)[2]
 
 betamatrix=matrix(rep(0,simulations*(p+1)),ncol=simulations)
 for(j in 1:simulations){
@@ -61,8 +98,10 @@ for(j in 1:simulations){
   penalty=rep(0,(p+1))#0 means always included, no shrinkage
   penalty[s_pblasso_complement]=1##only zero variables to be included in 
   if(sum(penalty)==1) penalty[s_pblasso[2]]=1 #in case if just one is zero. penalty.factor did not work in that case.So just select randomly another one.
+  #cvfit_pblpr=suppressWarnings(cv.glmnet(Xsamp, Ysamp,data=data.frame(Ysamp,Xsamp),alpha=0,
+  #                                       family=statmod::tweedie,penalty.factor=penalty)) ##Change
   cvfit_pblpr=suppressWarnings(cv.glmnet(Xsamp, Ysamp,data=data.frame(Ysamp,Xsamp),alpha=0,
-                                         family=statmod::tweedie,penalty.factor=penalty[2:(p+1)]))
+                                        family=statmod::tweedie,penalty.factor=penalty[2:(p+1)]))
   #cv.glmnet(Xsamp, Ysamp, family = "binomial",alpha = 0,penalty.factor=penalty[2:(p+1)])##Fit a ridge regression ##Alpha cannot be zero here it gives error
   
   beta_pblpr=as.numeric(coef(cvfit_pblpr))
@@ -88,11 +127,11 @@ upper_CI=sapply(1:(p+1), function(k){
 diff=upper_CI-lower_CI
 
 
-df=data.frame(variable=c("intercept",colnames(X)))|>
+df=data.frame(variable=c("intercept",colnames(X_imputed)))|>
    bind_cols(lower_CI=lower_CI)|>
    bind_cols(upper_CI=upper_CI)|>
    bind_cols(length_of_CI=diff)
-
+library(xtable)
 xtable(df,caption="Confidence interval of coefficients",digits=10)
 
 
